@@ -7,6 +7,8 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   loading,
+  confirmLabel,
+  confirmClass,
 }) {
   if (!open) return null;
 
@@ -16,7 +18,7 @@ export default function ConfirmDialog({
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onCancel}
       />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl sm:p-6">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
             <HiOutlineExclamationTriangle className="h-7 w-7 text-red-600" />
@@ -24,13 +26,13 @@ export default function ConfirmDialog({
           <h3 className="mt-4 text-lg font-bold text-slate-800">{title}</h3>
           <p className="mt-2 text-sm text-slate-500">{message}</p>
         </div>
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:gap-3">
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition disabled:opacity-50 ${confirmClass || 'bg-red-600 hover:bg-red-700 text-white'}`}
           >
-            {loading ? 'جاري...' : 'تأكيد'}
+            {loading ? 'جاري...' : (confirmLabel || 'تأكيد')}
           </button>
           <button
             onClick={onCancel}

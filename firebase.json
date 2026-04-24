@@ -1,9 +1,14 @@
 {
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
   "firestore": {
     "rules": "firestore.rules",
     "database": "default"
   },
   "hosting": {
+    "site": "for-all-directions-sa",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [

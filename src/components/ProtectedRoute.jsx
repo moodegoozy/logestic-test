@@ -20,6 +20,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   if (allowedRoles && userData && !allowedRoles.includes(userData.role)) {
     if (userData.role === 'admin') return <Navigate to="/admin" replace />;
     if (userData.role === 'driver') return <Navigate to="/driver" replace />;
+    if (userData.role === 'pending' || userData.role === 'rejected') return <Navigate to="/pending" replace />;
     return <Navigate to="/login" replace />;
   }
 

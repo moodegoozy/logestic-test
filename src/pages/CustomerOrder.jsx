@@ -61,7 +61,7 @@ export default function CustomerOrder() {
     setSubmitting(true);
     const newOrderNumber = generateOrderNumber();
     try {
-      await createOrder({
+      const createPromise = createOrder({
         orderNumber: newOrderNumber,
         customerName: formData.customerName.trim(),
         customerPhone: formData.customerPhone.trim(),
@@ -72,11 +72,28 @@ export default function CustomerOrder() {
         mapsLink: generateMapsLink(formData.latitude, formData.longitude),
         address: formData.address,
       });
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('submit-timeout')), 30000);
+      });
+      const orderDoc = await Promise.race([createPromise, timeoutPromise]);
       setOrderNumber(newOrderNumber);
       setSubmitted(true);
+
+      // Send WhatsApp confirmation via Cloud Function (fire-and-forget)
+      // Phone stays server-side; only orderId crosses the wire
+      if (orderDoc?.id) {
+        fetch(
+          'https://us-central1-sfrtalbyt-f7fd1.cloudfunctions.net/sendOrderConfirmation',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: orderDoc.id }),
+          }
+        ).catch(() => {/* Non-fatal: order was saved regardless */});
+      }
     } catch (err) {
       console.error('Order submit error:', err);
-      if (err?.message === 'timeout') {
+      if (err?.message === 'submit-timeout' || err?.message === 'timeout') {
         toast.error('انتهت مهلة الإرسال. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.');
       } else {
         toast.error('حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.');
@@ -89,21 +106,21 @@ export default function CustomerOrder() {
   /* ── Success state ── */
   if (submitted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-3 sm:p-4">
         <div className="w-full max-w-md text-center">
-          <div className="rounded-3xl bg-white p-8 shadow-xl border border-slate-100">
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-xl sm:p-8">
             {/* Logo */}
-            <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-2xl shadow-lg ring-4 ring-indigo-100">
+            <div className="mx-auto mb-4 h-16 w-16 overflow-hidden rounded-2xl shadow-lg ring-4 ring-indigo-100 sm:h-20 sm:w-20">
               <img src={logoImg} alt="لكل الاتجاهات" className="h-full w-full object-cover" />
             </div>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-              <HiOutlineCheckCircle className="h-8 w-8 text-emerald-600" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 sm:h-16 sm:w-16">
+              <HiOutlineCheckCircle className="h-7 w-7 text-emerald-600 sm:h-8 sm:w-8" />
             </div>
-            <h2 className="mt-5 text-2xl font-bold text-slate-800">
+            <h2 className="mt-5 text-xl font-bold text-slate-800 sm:text-2xl">
               تم إرسال طلبك بنجاح!
             </h2>
-            <p className="mt-3 text-slate-500">رقم طلبك هو</p>
-            <p className="mt-2 font-mono text-3xl font-bold text-indigo-600">
+            <p className="mt-3 text-sm text-slate-500 sm:text-base">رقم طلبك هو</p>
+            <p className="mt-2 break-all font-mono text-2xl font-bold text-indigo-600 sm:text-3xl" dir="ltr">
               {orderNumber}
             </p>
             <p className="mt-4 text-sm text-slate-400">
@@ -123,7 +140,7 @@ export default function CustomerOrder() {
                   address: '',
                 });
               }}
-              className="mt-6 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-indigo-700"
+              className="mt-6 w-full rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 sm:py-3"
             >
               إرسال طلب جديد
             </button>
@@ -137,14 +154,14 @@ export default function CustomerOrder() {
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-l from-indigo-600 via-blue-600 to-purple-700 px-4 pb-12 pt-8 text-center text-white">
+      <div className="relative overflow-hidden bg-gradient-to-l from-indigo-600 via-blue-600 to-purple-700 px-4 pb-10 pt-6 text-center text-white sm:pb-12 sm:pt-8">
         {/* Decorative circles */}
         <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-white/5" />
         <div className="pointer-events-none absolute -bottom-16 -right-16 h-48 w-48 rounded-full bg-white/5" />
         <div className="pointer-events-none absolute left-1/2 top-0 h-32 w-32 -translate-x-1/2 rounded-full bg-white/5" />
 
         {/* Logo */}
-        <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-3xl border-4 border-white/30 bg-white shadow-2xl shadow-indigo-900/40 ring-4 ring-white/10 backdrop-blur-sm">
+        <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-3xl border-4 border-white/30 bg-white shadow-2xl shadow-indigo-900/40 ring-4 ring-white/10 backdrop-blur-sm sm:h-28 sm:w-28">
           <img
             src={logoImg}
             alt="لكل الاتجاهات"
@@ -152,13 +169,13 @@ export default function CustomerOrder() {
           />
         </div>
 
-        <h1 className="mt-5 text-3xl font-extrabold tracking-wide drop-shadow-md">
+        <h1 className="mt-5 text-2xl font-extrabold tracking-wide drop-shadow-md sm:text-3xl">
           لكل الاتجاهات
         </h1>
-        <p className="mt-1 text-lg font-medium text-blue-100">
+        <p className="mt-1 text-base font-medium text-blue-100 sm:text-lg">
           FOR ALL DIRECTIONS
         </p>
-        <p className="mt-3 text-sm text-indigo-200">
+        <p className="mx-auto mt-3 max-w-md text-xs text-indigo-200 sm:text-sm">
           أدخل بيانات طلبك وسنقوم بتوصيله إليك
         </p>
 
@@ -174,7 +191,7 @@ export default function CustomerOrder() {
       </div>
 
       {/* Form card */}
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8">
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Customer Name */}
           <div>
@@ -270,7 +287,7 @@ export default function CustomerOrder() {
             </label>
             <MapPicker onLocationSelect={handleLocationSelect} />
             {formData.address && (
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 break-words text-sm text-slate-600">
                 📍 {formData.address}
               </p>
             )}
@@ -283,7 +300,7 @@ export default function CustomerOrder() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-gradient-to-l from-indigo-600 to-purple-600 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-200 transition hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-l from-indigo-600 to-purple-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 sm:py-3.5 sm:text-base"
           >
             {submitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
           </button>

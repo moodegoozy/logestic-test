@@ -2,16 +2,137 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Orders: anyone can create, only authenticated can read/update/delete
-    match /orders/{orderId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Users: only authenticated users can read their own data or admins can read all
+    function userDocPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function userExists() {
+      return isSignedIn() && exists(userDocPath(request.auth.uid));
+    }
+
+    function myRole() {
+      return get(userDocPath(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return userExists() && myRole() == 'admin';
+    }
+
+    function isDriver() {
+      return userExists() && myRole() == 'driver';
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function validOrderCreate() {
+      return request.resource.data.keys().hasAll([
+        'orderNumber',
+        'customerName',
+        'customerPhone',
+        'orderDetails',
+        'status',
+        'assignedDriverId',
+        'assignedDriverName'
+      ])
+      && request.resource.data.orderNumber is string
+      && request.resource.data.customerName is string
+      && request.resource.data.customerPhone is string
+      && request.resource.data.orderDetails is string
+      && request.resource.data.status == 'new'
+      && request.resource.data.assignedDriverId == null
+      && request.resource.data.assignedDriverName == null;
+    }
+
+    function canReadOrder(order) {
+      return isAdmin()
+        || (isDriver() && order.assignedDriverId == request.auth.uid)
+        || (isDriver() && order.assignedDriverId == null && (order.status == 'new' || order.status == 'reviewed'));
+    }
+
+    function canDriverAcceptOrder() {
+      return isDriver()
+        && resource.data.assignedDriverId == null
+        && (resource.data.status == 'new' || resource.data.status == 'reviewed')
+        && request.resource.data.assignedDriverId == request.auth.uid
+        && request.resource.data.status == 'assigned'
+        && request.resource.data.assignedDriverName is string
+        && request.resource.data.acceptedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'assignedDriverId',
+          'assignedDriverName',
+          'status',
+          'acceptedAt',
+          'updatedAt'
+        ]);
+    }
+
+    function canDriverUpdateAssignedOrder() {
+      return isDriver()
+        && resource.data.assignedDriverId == request.auth.uid
+        && request.resource.data.assignedDriverId == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'status',
+          'driverNotes',
+          'updatedAt'
+        ])
+        && (
+          request.resource.data.status == resource.data.status
+          || (resource.data.status == 'assigned' && request.resource.data.status == 'on_the_way')
+          || (resource.data.status == 'on_the_way' && request.resource.data.status == 'delivered')
+          // Driver can see but not change cancelled_by_customer status (read-only scenario)
+        );
+    }
+
+    function validSelfUserCreate(userId) {
+      return isSelf(userId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'name',
+          'email',
+          'phone',
+          'carType',
+          'licensePhotoUrl',
+          'vehicleDocPhotoUrl',
+          'role',
+          'createdAt'
+        ]);
+    }
+
+    function validSelfUserUpdate(userId) {
+      return isSelf(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'name',
+          'phone'
+        ]);
+    }
+
+    match /orders/{orderId} {
+      allow create: if validOrderCreate();
+      allow read: if canReadOrder(resource.data);
+      allow update: if isAdmin() || canDriverAcceptOrder() || canDriverUpdateAssignedOrder();
+      allow delete: if isAdmin();
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if isAdmin() || isSelf(userId);
+      allow create: if validSelfUserCreate(userId);
+      allow update: if isAdmin() || validSelfUserUpdate(userId);
+      allow delete: if isAdmin();
     }
   }
 }

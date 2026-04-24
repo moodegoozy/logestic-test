@@ -5,6 +5,7 @@ export const ORDER_STATUSES = {
   ON_THE_WAY: 'on_the_way',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
+  CANCELLED_BY_CUSTOMER: 'cancelled_by_customer',
 };
 
 export const STATUS_LABELS = {
@@ -14,6 +15,7 @@ export const STATUS_LABELS = {
   on_the_way: 'في الطريق',
   delivered: 'تم التوصيل',
   cancelled: 'ملغي',
+  cancelled_by_customer: 'ملغي من العميل',
 };
 
 export const STATUS_COLORS = {
@@ -23,6 +25,7 @@ export const STATUS_COLORS = {
   on_the_way: 'bg-orange-100 text-orange-700 border-orange-200',
   delivered: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   cancelled: 'bg-red-100 text-red-700 border-red-200',
+  cancelled_by_customer: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 export const STATUS_OPTIONS = [
@@ -32,6 +35,7 @@ export const STATUS_OPTIONS = [
   { value: 'on_the_way', label: 'في الطريق' },
   { value: 'delivered', label: 'تم التوصيل' },
   { value: 'cancelled', label: 'ملغي' },
+  { value: 'cancelled_by_customer', label: 'ملغي من العميل' },
 ];
 
 export const ROLES = {

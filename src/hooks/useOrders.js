@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { subscribeToOrders, subscribeToDriverOrders } from '../services/orders';
+import {
+  subscribeToOrders,
+  subscribeToDriverOrders,
+  subscribeToAvailableOrders,
+} from '../services/orders';
 
 export function useOrders() {
   const [orders, setOrders] = useState([]);
@@ -31,6 +35,21 @@ export function useDriverOrders(driverId) {
     });
     return () => unsubscribe();
   }, [driverId]);
+
+  return { orders, loading };
+}
+
+export function useAvailableOrders() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAvailableOrders((data) => {
+      setOrders(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   return { orders, loading };
 }
