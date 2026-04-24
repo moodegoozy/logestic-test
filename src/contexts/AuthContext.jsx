@@ -17,6 +17,16 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUserData = async (uid = auth.currentUser?.uid) => {
+    if (!uid) return null;
+    const userRef = doc(db, 'users', uid);
+    const userDoc = await getDoc(userRef);
+    if (!userDoc.exists()) return null;
+    const nextUserData = { id: userDoc.id, ...userDoc.data() };
+    setUserData(nextUserData);
+    return nextUserData;
+  };
+
   useEffect(() => {
     let unsubscribe = () => {};
     let cancelled = false;
@@ -58,6 +68,21 @@ export function AuthProvider({ children }) {
             if (userDoc.exists()) {
               setUserData({ id: userDoc.id, ...userDoc.data() });
             } else {
+              if (firebaseUser.phoneNumber) {
+                // Temporary Firebase phone-auth session used only for OTP verification.
+                // Do not create a Firestore user doc with this temporary UID.
+                setUserData({
+                  id: firebaseUser.uid,
+                  uid: firebaseUser.uid,
+                  name: firebaseUser.displayName || firebaseUser.phoneNumber,
+                  email: firebaseUser.email || '',
+                  phone: firebaseUser.phoneNumber,
+                  role: 'phone_verified_temp',
+                });
+                setLoading(false);
+                return;
+              }
+
               const newUserData = {
                 uid: firebaseUser.uid,
                 name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
@@ -112,7 +137,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, login, loginWithCustomToken, logout }}>
+    <AuthContext.Provider value={{ user, userData, loading, login, loginWithCustomToken, logout, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

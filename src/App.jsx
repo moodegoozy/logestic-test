@@ -12,6 +12,7 @@ import NotFound from './pages/NotFound';
 import DriverRegister from './pages/DriverRegister';
 import PendingApproval from './pages/PendingApproval';
 import DriverRequestsAdmin from './pages/DriverRequestsAdmin';
+import DriverProfile from './pages/DriverProfile';
 
 export default function App() {
   return (
@@ -77,6 +78,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['driver']}>
                 <DriverDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/profile"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <DriverProfile />
               </ProtectedRoute>
             }
           />

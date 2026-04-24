@@ -177,6 +177,36 @@ async function findDriverByPhone(phoneNormalized) {
     .find((u) => normalizePhone(u.phone || '') === phoneNormalized);
 }
 
+exports.checkDriverPhoneEligibility = onRequest(
+  { cors: ['https://for-all-directions-sa.web.app', 'https://sfrtalbyt-f7fd1.web.app'] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    try {
+      const phone = normalizePhone(req.body?.phone || '');
+      if (!isLikelyPhone(phone)) {
+        return res.status(400).json({ error: 'رقم الجوال غير صالح' });
+      }
+
+      const driver = await findDriverByPhone(phone);
+      if (!driver) {
+        return res.status(403).json({ error: 'رقم الجوال غير مسجل كمندوب معتمد' });
+      }
+
+      return res.status(200).json({
+        status: 'eligible',
+        normalizedPhone: phone,
+        uid: driver.id,
+      });
+    } catch (err) {
+      console.error('[checkDriverPhoneEligibility] Error:', err.message);
+      return res.status(500).json({ error: 'تعذر التحقق من صلاحية رقم الجوال' });
+    }
+  }
+);
+
 // ════════════════════════════════════════════════════════════════════════════
 // FUNCTION 1: HTTP POST /sendOrderConfirmation
 // Called by frontend AFTER order is created in Firestore.
@@ -363,6 +393,60 @@ exports.verifyDriverOtp = onRequest(
     } catch (err) {
       console.error('[verifyDriverOtp] Error:', err.message);
       return res.status(500).json({ error: 'تعذر التحقق من رمز الدخول' });
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// FUNCTION 1.6: Exchange Firebase Phone OTP session for existing driver UID
+// Frontend verifies OTP with Firebase Auth, then calls this endpoint with
+// the temporary phone-auth ID token. Backend returns a custom token for the
+// already-registered driver account (same phone).
+// ════════════════════════════════════════════════════════════════════════════
+exports.exchangePhoneSessionForDriverToken = onRequest(
+  { cors: ['https://for-all-directions-sa.web.app', 'https://sfrtalbyt-f7fd1.web.app'] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    try {
+      const idToken = String(req.body?.idToken || '').trim();
+      if (!idToken) {
+        return res.status(400).json({ error: 'idToken is required' });
+      }
+
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const phone = normalizePhone(decoded.phone_number || decoded.phoneNumber || '');
+      if (!isLikelyPhone(phone)) {
+        return res.status(403).json({ error: 'رقم الجوال في جلسة OTP غير صالح' });
+      }
+
+      const userSnap = await db.collection('users').where('phone', '!=', null).get();
+      const matched = userSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .find((u) => normalizePhone(u.phone || '') === phone);
+
+      if (!matched) {
+        return res.status(403).json({ error: 'لا يوجد حساب مسجل بهذا الرقم' });
+      }
+
+      if (!['driver', 'pending', 'rejected', 'admin'].includes(matched.role)) {
+        return res.status(403).json({ error: 'هذا الحساب غير مصرح له بالدخول' });
+      }
+
+      const customToken = await admin.auth().createCustomToken(matched.id, {
+        role: matched.role,
+      });
+
+      return res.status(200).json({
+        status: 'ok',
+        token: customToken,
+        role: matched.role,
+      });
+    } catch (err) {
+      console.error('[exchangePhoneSessionForDriverToken] Error:', err.message);
+      return res.status(500).json({ error: 'تعذر إكمال تسجيل دخول OTP' });
     }
   }
 );

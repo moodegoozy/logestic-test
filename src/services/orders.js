@@ -17,10 +17,17 @@ const ordersRef = collection(db, 'orders');
 
 export function subscribeToOrders(callback) {
   const q = query(ordersRef, orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(orders);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(orders);
+    },
+    (error) => {
+      console.error('[subscribeToOrders] snapshot error:', error?.code, error?.message);
+      callback([], error);
+    }
+  );
 }
 
 export function subscribeToDriverOrders(driverId, callback) {
@@ -29,24 +36,37 @@ export function subscribeToDriverOrders(driverId, callback) {
     where('assignedDriverId', '==', driverId),
     orderBy('createdAt', 'desc')
   );
-  return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(orders);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(orders);
+    },
+    (error) => {
+      console.error('[subscribeToDriverOrders] snapshot error:', error?.code, error?.message);
+      callback([], error);
+    }
+  );
 }
 
 export function subscribeToAvailableOrders(callback) {
   const q = query(
     ordersRef,
     where('assignedDriverId', '==', null),
+    where('status', 'in', ['new', 'reviewed']),
     orderBy('createdAt', 'desc')
   );
-  return onSnapshot(q, (snapshot) => {
-    const orders = snapshot.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((o) => ['new', 'reviewed'].includes(o.status));
-    callback(orders);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(orders);
+    },
+    (error) => {
+      console.error('[subscribeToAvailableOrders] snapshot error:', error?.code, error?.message);
+      callback([], error);
+    }
+  );
 }
 
 export async function createOrder(orderData) {

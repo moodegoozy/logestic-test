@@ -28,8 +28,12 @@ import {
 
 export default function DriverDashboard() {
   const { userData } = useAuth();
-  const { orders, loading } = useDriverOrders(userData?.id);
-  const { orders: availableOrders, loading: availableLoading } = useAvailableOrders();
+  const { orders, loading, error: myOrdersError } = useDriverOrders(userData?.id);
+  const {
+    orders: availableOrders,
+    loading: availableLoading,
+    error: availableOrdersError,
+  } = useAvailableOrders();
   const [notesMap, setNotesMap] = useState({});
   const [editingNotes, setEditingNotes] = useState({});
   const [acceptingId, setAcceptingId] = useState('');
@@ -192,6 +196,24 @@ export default function DriverDashboard() {
       toast.error('تعذر طلب صلاحية الإشعارات');
     }
   };
+
+  useEffect(() => {
+    if (myOrdersError?.code === 'permission-denied') {
+      toast.error('لا توجد صلاحية لقراءة طلباتك حالياً');
+    }
+  }, [myOrdersError]);
+
+  useEffect(() => {
+    if (availableOrdersError?.code === 'permission-denied') {
+      toast.error('لا توجد صلاحية لقراءة الطلبات المتاحة حالياً');
+    }
+  }, [availableOrdersError]);
+
+  useEffect(() => {
+    if (availableOrdersError?.code === 'failed-precondition') {
+      toast.error('يتطلب النظام إنشاء Firestore index للطلبات المتاحة');
+    }
+  }, [availableOrdersError]);
 
   useEffect(() => {
     const currentIds = new Set(availableOrders.map((o) => o.id));

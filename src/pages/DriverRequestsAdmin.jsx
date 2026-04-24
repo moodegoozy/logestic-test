@@ -157,7 +157,20 @@ export default function DriverRequestsAdmin() {
             </div>
 
             {/* Photos */}
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2">
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700">وثائق المندوب</h4>
+                  <p className="text-xs text-slate-400">المعاينة السريعة مع إمكانية الفتح بحجم كامل</p>
+                </div>
+                {(!driver.licensePhotoUrl || !driver.vehicleDocPhotoUrl) && (
+                  <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-600">
+                    وثائق ناقصة
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {driver.licensePhotoUrl && (
                 <div>
                   <p className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500">
@@ -170,6 +183,14 @@ export default function DriverRequestsAdmin() {
                     onClick={() => setLightbox({ url: driver.licensePhotoUrl, label: 'رخصة القيادة' })}
                     className="h-28 w-full cursor-zoom-in rounded-xl border border-slate-200 object-cover transition hover:opacity-90 sm:h-36"
                   />
+                  <a
+                    href={driver.licensePhotoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                  >
+                    فتح الرخصة بحجم كامل
+                  </a>
                 </div>
               )}
               {driver.vehicleDocPhotoUrl && (
@@ -184,8 +205,23 @@ export default function DriverRequestsAdmin() {
                     onClick={() => setLightbox({ url: driver.vehicleDocPhotoUrl, label: 'استمارة المركبة' })}
                     className="h-28 w-full cursor-zoom-in rounded-xl border border-slate-200 object-cover transition hover:opacity-90 sm:h-36"
                   />
+                  <a
+                    href={driver.vehicleDocPhotoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                  >
+                    فتح الاستمارة بحجم كامل
+                  </a>
                 </div>
               )}
+
+              {!driver.licensePhotoUrl && !driver.vehicleDocPhotoUrl && (
+                <div className="col-span-full rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
+                  لم يتم رفع أي تراخيص لهذا الطلب
+                </div>
+              )}
+              </div>
             </div>
 
             {/* Action buttons */}

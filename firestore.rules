@@ -115,9 +115,18 @@ service cloud.firestore {
       return isSelf(userId)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
+        && request.resource.data.name is string
+        && request.resource.data.phone is string
+        && request.resource.data.carType is string
+        && request.resource.data.licensePhotoUrl is string
+        && request.resource.data.vehicleDocPhotoUrl is string
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'name',
-          'phone'
+          'phone',
+          'carType',
+          'licensePhotoUrl',
+          'vehicleDocPhotoUrl',
+          'updatedAt'
         ]);
     }
 

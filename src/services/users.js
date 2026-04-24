@@ -8,6 +8,7 @@ import {
   deleteDoc,
   onSnapshot,
   orderBy,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -34,7 +35,10 @@ export async function updateUserRole(userId, role) {
 
 export async function updateUserData(userId, data) {
   const userDoc = doc(db, 'users', userId);
-  return updateDoc(userDoc, data);
+  return updateDoc(userDoc, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deleteUser(userId) {

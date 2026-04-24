@@ -12,6 +12,8 @@ import {
   HiOutlineTrash,
   HiOutlineCheck,
   HiOutlineXMark,
+  HiOutlinePhoto,
+  HiOutlineXCircle,
 } from 'react-icons/hi2';
 
 const ROLE_OPTIONS = [
@@ -22,6 +24,7 @@ const ROLE_OPTIONS = [
 export default function UsersManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [licenseModal, setLicenseModal] = useState(null); // { name, licensePhotoUrl, vehicleDocPhotoUrl }
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', role: '' });
   const [showDelete, setShowDelete] = useState(false);
@@ -230,6 +233,15 @@ export default function UsersManagement() {
                       </div>
 
                       {/* Actions */}
+                      {user.role === 'driver' && (user.licensePhotoUrl || user.vehicleDocPhotoUrl) && (
+                        <button
+                          onClick={() => setLicenseModal(user)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600"
+                          title="عرض التراخيص"
+                        >
+                          <HiOutlinePhoto className="h-5 w-5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleStartEdit(user)}
                         className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
@@ -261,6 +273,58 @@ export default function UsersManagement() {
         onCancel={() => { setShowDelete(false); setUserToDelete(null); }}
         loading={deleteLoading}
       />
+
+      {/* License Photos Modal */}
+      {licenseModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setLicenseModal(null)}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setLicenseModal(null)}
+              className="absolute left-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
+            >
+              <HiOutlineXCircle className="h-6 w-6" />
+            </button>
+            <h3 className="mb-5 text-base font-bold text-slate-800">وثائق المندوب — {licenseModal.name}</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {licenseModal.licensePhotoUrl && (
+                <div>
+                  <p className="mb-2 flex items-center gap-1 text-xs font-medium text-slate-500">
+                    <HiOutlinePhoto className="h-3.5 w-3.5" /> رخصة القيادة
+                  </p>
+                  <a href={licenseModal.licensePhotoUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={licenseModal.licensePhotoUrl}
+                      alt="رخصة القيادة"
+                      className="h-40 w-full rounded-xl border border-slate-200 object-cover transition hover:opacity-90"
+                    />
+                  </a>
+                </div>
+              )}
+              {licenseModal.vehicleDocPhotoUrl && (
+                <div>
+                  <p className="mb-2 flex items-center gap-1 text-xs font-medium text-slate-500">
+                    <HiOutlinePhoto className="h-3.5 w-3.5" /> استمارة المركبة
+                  </p>
+                  <a href={licenseModal.vehicleDocPhotoUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={licenseModal.vehicleDocPhotoUrl}
+                      alt="استمارة المركبة"
+                      className="h-40 w-full rounded-xl border border-slate-200 object-cover transition hover:opacity-90"
+                    />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

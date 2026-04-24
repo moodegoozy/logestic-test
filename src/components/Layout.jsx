@@ -11,6 +11,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineBanknotes,
   HiOutlineUserPlus,
+  HiOutlineUserCircle,
 } from 'react-icons/hi2';
 import { subscribeToPendingDrivers } from '../services/driverRequests';
 
@@ -66,6 +67,12 @@ export default function Layout({ children }) {
       path: '/admin/driver-requests',
       show: isAdmin,
       badge: pendingCount > 0 ? pendingCount : null,
+    },
+    {
+      label: 'بروفايل المندوب',
+      icon: HiOutlineUserCircle,
+      path: '/driver/profile',
+      show: !isAdmin,
     },
   ];
 
