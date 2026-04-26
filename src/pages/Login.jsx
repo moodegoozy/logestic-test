@@ -17,6 +17,21 @@ const OTP_COOLDOWN_SECONDS = 25;
 const OTP_TEMP_RETRY_SECONDS = 60;
 const OTP_LOCK_KEY = 'driverOtpNextAllowedAt';
 
+const toEnglishDigits = (value = '') => {
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+  const easternArabicIndic = '۰۱۲۳۴۵۶۷۸۹';
+  return String(value)
+    .split('')
+    .map((ch) => {
+      const idx1 = arabicIndic.indexOf(ch);
+      if (idx1 >= 0) return String(idx1);
+      const idx2 = easternArabicIndic.indexOf(ch);
+      if (idx2 >= 0) return String(idx2);
+      return ch;
+    })
+    .join('');
+};
+
 export default function Login() {
   const [mode, setMode] = useState('driver');
 
@@ -94,7 +109,7 @@ export default function Login() {
   };
 
   const normalizeSaudiToE164 = (input) => {
-    let p = input.replace(/[^\d]/g, '');
+    let p = toEnglishDigits(input).replace(/[^\d]/g, '');
     if (p.startsWith('00966')) p = p.slice(5);
     else if (p.startsWith('966')) p = p.slice(3);
     if (p.startsWith('0')) p = p.slice(1);
@@ -137,7 +152,9 @@ export default function Login() {
       return;
     }
 
-    if (!phone.trim()) {
+    const normalizedPhoneInput = toEnglishDigits(phone).trim();
+
+    if (!normalizedPhoneInput) {
       toast.error('يرجى إدخال رقم الجوال');
       return;
     }
@@ -147,7 +164,7 @@ export default function Login() {
     }
     setOtpLoading(true);
     try {
-      const e164 = normalizeSaudiToE164(phone.trim());
+      const e164 = normalizeSaudiToE164(normalizedPhoneInput);
       if (!e164) {
         toast.error('صيغة الرقم غير صحيحة. استخدم 05xxxxxxxx');
         return;
@@ -156,7 +173,7 @@ export default function Login() {
       const eligibilityRes = await fetch(`${FUNCTIONS_BASE}/checkDriverPhoneEligibility`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify({ phone: normalizedPhoneInput }),
       });
       const eligibilityData = await eligibilityRes.json().catch(() => ({}));
       if (!eligibilityRes.ok) {
@@ -208,6 +225,7 @@ export default function Login() {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    setOtpDebug(null);
 
     const exchangeSession = async (idToken) => {
       const res = await fetch(`${FUNCTIONS_BASE}/exchangePhoneSessionForDriverToken`, {
@@ -223,7 +241,8 @@ export default function Login() {
     };
 
     if (!phoneSessionTokenRef.current) {
-      if (!otp.trim()) {
+      const normalizedOtp = toEnglishDigits(otp).replace(/[^\d]/g, '').slice(0, 6);
+      if (!normalizedOtp) {
         toast.error('يرجى إدخال رمز التحقق');
         return;
       }
@@ -236,7 +255,8 @@ export default function Login() {
     setLoading(true);
     try {
       if (!phoneSessionTokenRef.current) {
-        const credential = await confirmationRef.current.confirm(otp.trim());
+        const normalizedOtp = toEnglishDigits(otp).replace(/[^\d]/g, '').slice(0, 6);
+        const credential = await confirmationRef.current.confirm(normalizedOtp);
         phoneSessionTokenRef.current = await credential.user.getIdToken();
       }
 
@@ -248,10 +268,17 @@ export default function Login() {
       setOtp('');
       toast.success('تم تسجيل الدخول بنجاح');
     } catch (err) {
+      setOtpDebug({
+        code: err?.code || 'unknown',
+        message: err?.message || '',
+        host: typeof window !== 'undefined' ? window.location.hostname : '',
+      });
       if (err.code === 'auth/invalid-verification-code') {
         toast.error('رمز التحقق غير صحيح');
       } else if (err.code === 'auth/code-expired') {
         toast.error('انتهت صلاحية الرمز، أعد الإرسال');
+      } else if (err.code === 'auth/captcha-check-failed' || err.code === 'auth/invalid-app-credential') {
+        toast.error('انتهت/فشلت جلسة التحقق الأمني. أعد إرسال OTP مرة واحدة ثم أدخل الرمز الجديد');
       } else {
         const msg = String(err?.message || '');
         toast.error(msg || 'تعذر التحقق من الرمز');
@@ -402,7 +429,11 @@ export default function Login() {
           )}
 
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="mb-2 text-xs text-slate-500">تحقق الأمان (reCAPTCHA) مطلوب قبل إرسال الرمز</p>
+            <p className="mb-2 text-xs text-slate-500">
+              {otpSent
+                ? 'تم إرسال الرمز. reCAPTCHA مطلوب فقط عند إعادة إرسال OTP.'
+                : 'تحقق الأمان (reCAPTCHA) مطلوب قبل إرسال الرمز'}
+            </p>
             <div id="recaptcha-container" />
           </div>
 
