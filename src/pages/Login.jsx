@@ -13,7 +13,8 @@ import {
 } from 'react-icons/hi2';
 
 const FUNCTIONS_BASE = 'https://us-central1-sfrtalbyt-f7fd1.cloudfunctions.net';
-const OTP_COOLDOWN_SECONDS = 120;
+const OTP_COOLDOWN_SECONDS = 25;
+const OTP_TEMP_RETRY_SECONDS = 60;
 const OTP_LOCK_KEY = 'driverOtpNextAllowedAt';
 
 export default function Login() {
@@ -195,8 +196,8 @@ export default function Login() {
           toast.error('فشل reCAPTCHA. أكمل التحقق المرئي ثم أعد المحاولة، أو عطّل مانع الإعلانات');
         }
       } else if (err.code === 'auth/quota-exceeded' || err.code === 'auth/too-many-requests') {
-        lockOtpRequests(15 * 60);
-        toast.error('تم رفض طلب OTP مؤقتاً من خدمة التحقق. انتظر 15 دقيقة ثم أعد المحاولة');
+        lockOtpRequests(OTP_TEMP_RETRY_SECONDS);
+        toast.error(`خدمة OTP رفضت الطلب مؤقتاً. أعد المحاولة بعد ${OTP_TEMP_RETRY_SECONDS} ثانية`);
       } else {
         toast.error(`تعذر إرسال رمز التحقق (${err?.code || 'unknown'})`);
       }
