@@ -235,7 +235,9 @@ export default function Login() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.token) {
-        throw new Error(data?.error || 'تعذر إكمال تسجيل الدخول');
+        const exchangeError = new Error(data?.error || 'تعذر إكمال تسجيل الدخول');
+        exchangeError.code = data?.code || `http_${res.status}`;
+        throw exchangeError;
       }
       return data.token;
     };
@@ -277,6 +279,8 @@ export default function Login() {
         toast.error('رمز التحقق غير صحيح');
       } else if (err.code === 'auth/code-expired') {
         toast.error('انتهت صلاحية الرمز، أعد الإرسال');
+      } else if (err.code === 'missing_sign_blob_permission') {
+        toast.error('المشكلة من إعداد Google Cloud IAM: فعّل Service Account Token Creator للحسابات الخدمية للمشروع');
       } else if (err.code === 'auth/captcha-check-failed' || err.code === 'auth/invalid-app-credential') {
         toast.error('انتهت/فشلت جلسة التحقق الأمني. أعد إرسال OTP مرة واحدة ثم أدخل الرمز الجديد');
       } else {
