@@ -29,6 +29,7 @@ export default function Login() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpDebug, setOtpDebug] = useState(null);
   const confirmationRef = useRef(null);
+  const phoneSessionTokenRef = useRef(null);
   const recaptchaWidgetIdRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
@@ -206,32 +207,44 @@ export default function Login() {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    if (!otp.trim()) {
-      toast.error('يرجى إدخال رمز التحقق');
-      return;
-    }
-    if (!confirmationRef.current) {
-      toast.error('يرجى طلب رمز OTP أولاً');
-      return;
-    }
-    setLoading(true);
-    try {
-      const credential = await confirmationRef.current.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken();
 
+    const exchangeSession = async (idToken) => {
       const res = await fetch(`${FUNCTIONS_BASE}/exchangePhoneSessionForDriverToken`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
       const data = await res.json().catch(() => ({}));
-
       if (!res.ok || !data?.token) {
-        toast.error(data?.error || 'رقم الجوال غير مسجل كمندوب');
+        throw new Error(data?.error || 'تعذر إكمال تسجيل الدخول');
+      }
+      return data.token;
+    };
+
+    if (!phoneSessionTokenRef.current) {
+      if (!otp.trim()) {
+        toast.error('يرجى إدخال رمز التحقق');
         return;
       }
+      if (!confirmationRef.current) {
+        toast.error('يرجى طلب رمز OTP أولاً');
+        return;
+      }
+    }
 
-      await loginWithCustomToken(data.token);
+    setLoading(true);
+    try {
+      if (!phoneSessionTokenRef.current) {
+        const credential = await confirmationRef.current.confirm(otp.trim());
+        phoneSessionTokenRef.current = await credential.user.getIdToken();
+      }
+
+      const driverToken = await exchangeSession(phoneSessionTokenRef.current);
+      await loginWithCustomToken(driverToken);
+
+      phoneSessionTokenRef.current = null;
+      confirmationRef.current = null;
+      setOtp('');
       toast.success('تم تسجيل الدخول بنجاح');
     } catch (err) {
       if (err.code === 'auth/invalid-verification-code') {
@@ -239,7 +252,11 @@ export default function Login() {
       } else if (err.code === 'auth/code-expired') {
         toast.error('انتهت صلاحية الرمز، أعد الإرسال');
       } else {
-        toast.error('تعذر التحقق من الرمز');
+        const msg = String(err?.message || '');
+        toast.error(msg || 'تعذر التحقق من الرمز');
+        if (phoneSessionTokenRef.current) {
+          toast('تم التحقق من OTP، أعد الضغط على "دخول المندوب" لإعادة محاولة الإكمال بدون reCAPTCHA');
+        }
       }
     } finally {
       setLoading(false);
