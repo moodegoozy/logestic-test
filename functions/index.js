@@ -446,6 +446,13 @@ exports.exchangePhoneSessionForDriverToken = onRequest(
       });
     } catch (err) {
       console.error('[exchangePhoneSessionForDriverToken] Error:', err.message);
+      const msg = String(err?.message || '');
+      if (msg.includes('iam.serviceAccounts.signBlob')) {
+        return res.status(503).json({
+          error: 'إعدادات الخادم ناقصة: صلاحية Service Account Token Creator غير مفعلة لإنشاء custom token',
+          code: 'missing_sign_blob_permission',
+        });
+      }
       return res.status(500).json({ error: 'تعذر إكمال تسجيل دخول OTP' });
     }
   }
