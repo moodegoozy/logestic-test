@@ -27,6 +27,7 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpDebug, setOtpDebug] = useState(null);
   const confirmationRef = useRef(null);
   const recaptchaWidgetIdRef = useRef(null);
 
@@ -125,6 +126,15 @@ export default function Login() {
   };
 
   const handleRequestOtp = async () => {
+    setOtpDebug(null);
+
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : '';
+    if (protocol !== 'https:' && host !== 'localhost') {
+      toast.error('تسجيل الجوال يحتاج HTTPS. افتح الموقع على رابط https:// ثم حاول مرة أخرى');
+      return;
+    }
+
     if (!phone.trim()) {
       toast.error('يرجى إدخال رقم الجوال');
       return;
@@ -160,6 +170,11 @@ export default function Login() {
       toast.success(`تم إرسال رمز التحقق إلى ${e164} عبر SMS`);
     } catch (err) {
       console.error('OTP send failed:', err?.code, err?.message);
+      setOtpDebug({
+        code: err?.code || 'unknown',
+        message: err?.message || '',
+        host: typeof window !== 'undefined' ? window.location.hostname : '',
+      });
       // Reset verifier so it can be recreated next attempt
       if (window.recaptchaVerifier) {
         try { window.recaptchaVerifier.clear(); } catch { /* ignore */ }
@@ -175,7 +190,7 @@ export default function Login() {
         toast.error('فشل reCAPTCHA. أكمل التحقق المرئي ثم أعد المحاولة، أو عطّل مانع الإعلانات');
       } else if (err.code === 'auth/quota-exceeded' || err.code === 'auth/too-many-requests') {
         lockOtpRequests(15 * 60);
-        toast.error('تم حظر الإرسال مؤقتاً من Firebase بسبب كثرة المحاولات من نفس الجهاز أو الشبكة. انتظر 15 دقيقة أو غيّر الشبكة ثم أعد المحاولة');
+        toast.error('تم رفض طلب OTP مؤقتاً من خدمة التحقق. انتظر 15 دقيقة ثم أعد المحاولة');
       } else {
         toast.error(`تعذر إرسال رمز التحقق (${err?.code || 'unknown'})`);
       }
@@ -367,6 +382,15 @@ export default function Login() {
             <p className="mb-2 text-xs text-slate-500">تحقق الأمان (reCAPTCHA) مطلوب قبل إرسال الرمز</p>
             <div id="recaptcha-container" />
           </div>
+
+          {mode === 'driver' && otpDebug && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800" dir="ltr">
+              <p className="font-semibold">OTP Debug</p>
+              <p>code: {otpDebug.code}</p>
+              <p>host: {otpDebug.host || 'unknown'}</p>
+              <p className="break-all">message: {otpDebug.message || 'n/a'}</p>
+            </div>
+          )}
 
           <div className="mt-5 border-t border-slate-100 pt-5 text-center">
             <p className="text-xs text-slate-400 sm:text-sm">
