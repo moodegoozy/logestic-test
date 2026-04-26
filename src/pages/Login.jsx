@@ -187,7 +187,12 @@ export default function Login() {
       } else if (err.code === 'auth/invalid-app-credential') {
         toast.error('فشل التحقق الأمني للتطبيق. تأكد من Authorized domains و reCAPTCHA');
       } else if (err.code === 'auth/captcha-check-failed') {
-        toast.error('فشل reCAPTCHA. أكمل التحقق المرئي ثم أعد المحاولة، أو عطّل مانع الإعلانات');
+        const isHostnameMismatch = String(err?.message || '').toLowerCase().includes('hostname match not found');
+        if (isHostnameMismatch) {
+          toast.error('الدومين الحالي غير مضاف في Firebase Auth Authorized domains. أضف for-all-directions-sa.web.app ثم أعد المحاولة');
+        } else {
+          toast.error('فشل reCAPTCHA. أكمل التحقق المرئي ثم أعد المحاولة، أو عطّل مانع الإعلانات');
+        }
       } else if (err.code === 'auth/quota-exceeded' || err.code === 'auth/too-many-requests') {
         lockOtpRequests(15 * 60);
         toast.error('تم رفض طلب OTP مؤقتاً من خدمة التحقق. انتظر 15 دقيقة ثم أعد المحاولة');
